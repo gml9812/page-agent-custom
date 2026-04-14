@@ -9,6 +9,7 @@ import type {
 	SupportedLanguage,
 } from '@page-agent/core'
 import type { LLMConfig } from '@page-agent/llms'
+import type { BrowserState } from '@page-agent/page-controller'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { MultiPageAgent } from './MultiPageAgent'
@@ -37,6 +38,7 @@ export interface UseAgentResult {
 	currentTask: string
 	config: ExtConfig | null
 	execute: (task: string) => Promise<ExecutionResult>
+	inspectCurrentPage: () => Promise<BrowserState | null>
 	stop: () => void
 	configure: (config: ExtConfig) => Promise<void>
 }
@@ -121,6 +123,19 @@ export function useAgent(): UseAgentResult {
 		agentRef.current?.stop()
 	}, [])
 
+	const inspectCurrentPage = useCallback(async () => {
+		const agent = agentRef.current
+		if (!agent) throw new Error('Agent not initialized')
+		if (agent.status === 'running') return null
+
+		try {
+			return await agent.pageController.getBrowserState()
+		} catch (error) {
+			console.warn('[useAgent] Failed to inspect current page:', error)
+			return null
+		}
+	}, [])
+
 	const configure = useCallback(
 		async ({
 			language,
@@ -159,6 +174,7 @@ export function useAgent(): UseAgentResult {
 		currentTask,
 		config,
 		execute,
+		inspectCurrentPage,
 		stop,
 		configure,
 	}

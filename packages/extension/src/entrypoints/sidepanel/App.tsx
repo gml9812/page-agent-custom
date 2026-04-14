@@ -1,4 +1,4 @@
-import { ChevronDown, History, Send, Settings, Square } from 'lucide-react'
+import { History, Send, Settings, Square } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { useConversation } from '@/agent/useConversation'
@@ -6,7 +6,6 @@ import { ChatMessageList } from '@/components/ChatMessageList'
 import { ConfigPanel } from '@/components/ConfigPanel'
 import { HistoryDetail } from '@/components/HistoryDetail'
 import { HistoryList } from '@/components/HistoryList'
-import { ActivityCard, EventCard } from '@/components/cards'
 import { EmptyState, Logo, MotionOverlay, StatusDot } from '@/components/misc'
 import { Button } from '@/components/ui/button'
 import {
@@ -36,16 +35,16 @@ export default function App() {
 		currentTask,
 		config,
 		chatMessages,
+		taskRuns,
+		currentTaskRunId,
 		plannerStatus,
 		plannerError,
 		currentRunDraft,
-		executedTasks,
 		sendMessage,
 		runTaskDirect,
 		stop,
 		configure,
 	} = useConversation()
-	const [selectedExecutedTaskId, setSelectedExecutedTaskId] = useState<string>('')
 
 	// Persist session when task finishes
 	const prevStatusRef = useRef(status)
@@ -160,12 +159,8 @@ export default function App() {
 
 	const isRunning = status === 'running'
 	const isPlanning = plannerStatus === 'planning'
-	const selectedExecutedTask =
-		executedTasks.find((task) => task.id === selectedExecutedTaskId) ||
-		executedTasks[executedTasks.length - 1] ||
-		null
 	const showEmptyState =
-		chatMessages.length === 0 && history.length === 0 && !isRunning && !isPlanning
+		chatMessages.length === 0 && taskRuns.length === 0 && history.length === 0 && !isRunning && !isPlanning
 
 	return (
 		<div className="relative flex flex-col h-screen bg-background">
@@ -199,52 +194,25 @@ export default function App() {
 
 			{/* Content */}
 			<main className="flex-1 overflow-hidden flex flex-col">
-				{executedTasks.length > 0 && (
-					<div className="border-b px-3 py-2 bg-muted/20 space-y-2">
-						<div className="flex items-center gap-2">
-							<div className="text-[10px] text-muted-foreground uppercase tracking-wide shrink-0">
-								Session Tasks
-							</div>
-							<div className="relative flex-1">
-								<select
-									value={selectedExecutedTaskId}
-									onChange={(e) => setSelectedExecutedTaskId(e.target.value)}
-									className="h-8 w-full appearance-none rounded-md border border-input bg-background px-2 pr-8 text-xs cursor-pointer"
-								>
-									{executedTasks.map((task, index) => (
-										<option key={task.id} value={task.id}>
-											{index + 1}. {task.userRequest}
-										</option>
-									))}
-								</select>
-								<ChevronDown className="pointer-events-none absolute right-2 top-1/2 size-3 -translate-y-1/2 text-muted-foreground" />
-							</div>
+				{currentRunDraft?.userRequest && (
+					<div className="border-b px-3 py-2 bg-muted/30">
+						<div className="text-[10px] text-muted-foreground uppercase tracking-wide">
+							User Request
 						</div>
+						<div className="text-xs font-medium truncate" title={currentRunDraft.userRequest}>
+							{currentRunDraft.userRequest}
+						</div>
+					</div>
+				)}
 
-						{selectedExecutedTask && (
-							<div className="rounded-md border bg-background px-2.5 py-2">
-								<div className="flex items-center justify-between gap-2">
-									<div className="text-[10px] text-muted-foreground uppercase tracking-wide">
-										Selected Task
-									</div>
-									<span className="text-[10px] text-muted-foreground capitalize">
-										{selectedExecutedTask.status}
-									</span>
-								</div>
-								<div
-									className="mt-1 text-xs font-medium truncate"
-									title={selectedExecutedTask.userRequest}
-								>
-									{selectedExecutedTask.userRequest}
-								</div>
-								<div
-									className="mt-1 text-[11px] text-muted-foreground whitespace-pre-wrap line-clamp-3"
-									title={selectedExecutedTask.task}
-								>
-									{selectedExecutedTask.task}
-								</div>
-							</div>
-						)}
+				{currentTask && (
+					<div className="border-b px-3 py-2 bg-muted/20">
+						<div className="text-[10px] text-muted-foreground uppercase tracking-wide">
+							Executed Task
+						</div>
+						<div className="text-xs font-medium truncate" title={currentTask}>
+							{currentTask}
+						</div>
 					</div>
 				)}
 
@@ -255,17 +223,14 @@ export default function App() {
 					{(chatMessages.length > 0 || isPlanning || plannerError) && (
 						<ChatMessageList
 							messages={chatMessages}
+							taskRuns={taskRuns}
+							currentTaskRunId={currentTaskRunId}
+							liveHistory={history}
+							liveActivity={activity}
 							plannerStatus={plannerStatus}
 							plannerError={plannerError}
 						/>
 					)}
-
-					{history.map((event, index) => (
-						<EventCard key={index} event={event} />
-					))}
-
-					{/* Activity indicator at bottom */}
-					{activity && <ActivityCard activity={activity} />}
 				</div>
 			</main>
 
