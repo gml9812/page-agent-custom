@@ -14,7 +14,14 @@ import {
 import { useEffect, useState } from 'react'
 import { siGithub } from 'simple-icons'
 
-import { DEMO_BASE_URL, DEMO_MODEL, isTestingEndpoint } from '@/agent/constants'
+import {
+	CHAT_DEFAULT_BASE_URL,
+	CHAT_DEFAULT_MODEL,
+	DEMO_API_KEY,
+	DEMO_BASE_URL,
+	DEMO_MODEL,
+	isTestingEndpoint,
+} from '@/agent/constants'
 import type { ExtConfig, LanguagePreference } from '@/agent/useAgent'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -27,9 +34,12 @@ interface ConfigPanelProps {
 }
 
 export function ConfigPanel({ config, onSave, onClose }: ConfigPanelProps) {
-	const [baseURL, setBaseURL] = useState(config?.baseURL || DEMO_BASE_URL)
-	const [model, setModel] = useState(config?.model || DEMO_MODEL)
+	const [baseURL, setBaseURL] = useState(config?.baseURL || CHAT_DEFAULT_BASE_URL)
+	const [model, setModel] = useState(config?.model || CHAT_DEFAULT_MODEL)
 	const [apiKey, setApiKey] = useState(config?.apiKey)
+	const [taskBaseURL, setTaskBaseURL] = useState(config?.taskBaseURL || DEMO_BASE_URL)
+	const [taskModel, setTaskModel] = useState(config?.taskModel || DEMO_MODEL)
+	const [taskApiKey, setTaskApiKey] = useState(config?.taskApiKey || DEMO_API_KEY)
 	const [language, setLanguage] = useState<LanguagePreference>(config?.language)
 	const [maxSteps, setMaxSteps] = useState(config?.maxSteps)
 	const [systemInstruction, setSystemInstruction] = useState(config?.systemInstruction ?? '')
@@ -48,13 +58,17 @@ export function ConfigPanel({ config, onSave, onClose }: ConfigPanelProps) {
 	const [copied, setCopied] = useState(false)
 	const [showToken, setShowToken] = useState(false)
 	const [showApiKey, setShowApiKey] = useState(false)
+	const [showTaskApiKey, setShowTaskApiKey] = useState(false)
 
 	const [prevConfig, setPrevConfig] = useState(config)
 	if (prevConfig !== config) {
 		setPrevConfig(config)
-		setBaseURL(config?.baseURL || DEMO_BASE_URL)
-		setModel(config?.model || DEMO_MODEL)
+		setBaseURL(config?.baseURL || CHAT_DEFAULT_BASE_URL)
+		setModel(config?.model || CHAT_DEFAULT_MODEL)
 		setApiKey(config?.apiKey)
+		setTaskBaseURL(config?.taskBaseURL || DEMO_BASE_URL)
+		setTaskModel(config?.taskModel || DEMO_MODEL)
+		setTaskApiKey(config?.taskApiKey || DEMO_API_KEY)
 		setLanguage(config?.language)
 		setMaxSteps(config?.maxSteps)
 		setSystemInstruction(config?.systemInstruction ?? '')
@@ -102,6 +116,9 @@ export function ConfigPanel({ config, onSave, onClose }: ConfigPanelProps) {
 				apiKey,
 				baseURL,
 				model,
+				taskBaseURL,
+				taskModel,
+				taskApiKey,
 				language,
 				maxSteps: maxSteps || undefined,
 				systemInstruction: systemInstruction || undefined,
@@ -178,7 +195,7 @@ export function ConfigPanel({ config, onSave, onClose }: ConfigPanelProps) {
 			</a>
 
 			<div className="flex flex-col gap-1.5">
-				<label className="text-xs text-muted-foreground">Base URL</label>
+				<label className="text-xs text-muted-foreground">Chat Base URL</label>
 				<Input
 					placeholder="https://api.openai.com/v1"
 					value={baseURL}
@@ -204,7 +221,7 @@ export function ConfigPanel({ config, onSave, onClose }: ConfigPanelProps) {
 			)}
 
 			<div className="flex flex-col gap-1.5">
-				<label className="text-xs text-muted-foreground">Model</label>
+				<label className="text-xs text-muted-foreground">Chat Model</label>
 				<Input
 					placeholder="gpt-5.1"
 					value={model}
@@ -214,7 +231,7 @@ export function ConfigPanel({ config, onSave, onClose }: ConfigPanelProps) {
 			</div>
 
 			<div className="flex flex-col gap-1.5">
-				<label className="text-xs text-muted-foreground">API Key</label>
+				<label className="text-xs text-muted-foreground">Chat API Key</label>
 				<div className="flex gap-2 items-center">
 					<Input
 						type={showApiKey ? 'text' : 'password'}
@@ -281,6 +298,62 @@ export function ConfigPanel({ config, onSave, onClose }: ConfigPanelProps) {
 							rows={3}
 							className="text-xs rounded-md border border-input bg-background px-3 py-2 resize-y min-h-[60px]"
 						/>
+					</div>
+
+					<div className="rounded-md border bg-muted/30 p-3 space-y-3">
+						<div>
+							<div className="text-xs font-medium text-foreground">Task Execution Model</div>
+							<p className="mt-1 text-[11px] text-muted-foreground">
+								These settings are used only when the browser automation task actually runs.
+							</p>
+						</div>
+
+						<div className="flex flex-col gap-1.5">
+							<label className="text-xs text-muted-foreground">Task Base URL</label>
+							<Input
+								placeholder="https://api.openai.com/v1"
+								value={taskBaseURL}
+								onChange={(e) => setTaskBaseURL(e.target.value)}
+								className="text-xs h-8"
+							/>
+						</div>
+
+						{isTestingEndpoint(taskBaseURL) && (
+							<div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-2.5 text-[11px] leading-relaxed text-muted-foreground">
+								<Scale className="mr-1 inline-block size-3 -mt-0.5 text-amber-600" />
+								Task execution is using the testing API endpoint.
+							</div>
+						)}
+
+						<div className="flex flex-col gap-1.5">
+							<label className="text-xs text-muted-foreground">Task Model</label>
+							<Input
+								placeholder="qwen3.5-plus"
+								value={taskModel}
+								onChange={(e) => setTaskModel(e.target.value)}
+								className="text-xs h-8"
+							/>
+						</div>
+
+						<div className="flex flex-col gap-1.5">
+							<label className="text-xs text-muted-foreground">Task API Key</label>
+							<div className="flex gap-2 items-center">
+								<Input
+									type={showTaskApiKey ? 'text' : 'password'}
+									value={taskApiKey}
+									onChange={(e) => setTaskApiKey(e.target.value)}
+									className="text-xs h-8"
+								/>
+								<Button
+									variant="outline"
+									size="icon"
+									className="h-8 w-8 shrink-0 cursor-pointer"
+									onClick={() => setShowTaskApiKey(!showTaskApiKey)}
+								>
+									{showTaskApiKey ? <EyeOff className="size-3" /> : <Eye className="size-3" />}
+								</Button>
+							</div>
+						</div>
 					</div>
 
 					<label className="flex items-center justify-between cursor-pointer">
