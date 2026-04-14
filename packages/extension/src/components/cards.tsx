@@ -8,10 +8,13 @@ import type {
 } from '@page-agent/core'
 import type { ConversationLanguage } from '@/agent/conversationTypes'
 import {
+	Brain,
 	CheckCircle,
 	Eye,
+	Flag,
 	Globe,
 	Keyboard,
+	LibraryBig,
 	Mouse,
 	MoveVertical,
 	RefreshCw,
@@ -85,12 +88,12 @@ function ResultCard({
 	)
 }
 
-function ReflectionItem({ icon, value }: { icon: string; value: string }) {
+function ReflectionItem({ icon, value }: { icon: React.ReactNode; value: string }) {
 	const [expanded, setExpanded] = useState(false)
 
 	return (
 		<Fragment>
-			<span className="flex justify-center text-xs">{icon}</span>
+			<span className="flex justify-center pt-0.5 text-muted-foreground">{icon}</span>
 			<button
 				type="button"
 				className={cn(
@@ -115,16 +118,28 @@ function ReflectionSection({
 	}
 }) {
 	const items = [
-		{ icon: 'E', label: 'eval', value: reflection.evaluation_previous_goal },
-		{ icon: 'M', label: 'memory', value: reflection.memory },
-		{ icon: 'G', label: 'goal', value: reflection.next_goal },
+		{
+			icon: <Brain className="size-3.5" />,
+			label: 'eval',
+			value: reflection.evaluation_previous_goal,
+		},
+		{
+			icon: <LibraryBig className="size-3.5" />,
+			label: 'memory',
+			value: reflection.memory,
+		},
+		{
+			icon: <Flag className="size-3.5" />,
+			label: 'goal',
+			value: reflection.next_goal,
+		},
 	].filter((item) => item.value)
 
 	if (items.length === 0) return null
 
 	return (
 		<div className="mb-2">
-			<div className="grid grid-cols-[14px_1fr] gap-x-2 gap-y-2">
+			<div className="grid grid-cols-[16px_1fr] gap-x-2 gap-y-2">
 				{items.map((item) => (
 					<ReflectionItem key={item.label} icon={item.icon} value={item.value!} />
 				))}
