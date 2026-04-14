@@ -23,7 +23,7 @@ export function HistoryList({
 }: {
 	onSelect: (id: string) => void
 	onBack: () => void
-	onRerun: (task: string) => void
+	onRerun: (task: string, userRequest?: string) => void
 }) {
 	const [sessions, setSessions] = useState<SessionRecord[]>([])
 	const [loading, setLoading] = useState(true)
@@ -48,9 +48,9 @@ export function HistoryList({
 		downloadHistoryExport(session.task, session.createdAt, session.history)
 	}
 
-	const handleRerun = (e: React.MouseEvent, task: string) => {
+	const handleRerun = (e: React.MouseEvent, session: SessionRecord) => {
 		e.stopPropagation()
-		onRerun(task)
+		onRerun(session.task, session.userRequest)
 	}
 
 	return (
@@ -108,7 +108,12 @@ export function HistoryList({
 
 						{/* Content */}
 						<div className="flex-1 min-w-0">
-							<p className="text-xs font-medium truncate">{session.task}</p>
+							<p className="text-xs font-medium truncate">{session.userRequest ?? session.task}</p>
+							{session.userRequest && session.userRequest !== session.task && (
+								<p className="mt-0.5 text-[10px] text-muted-foreground truncate">
+									Task: {session.task}
+								</p>
+							)}
 							<div className="flex items-center mt-0.5">
 								<p className="text-[10px] text-muted-foreground">
 									{timeAgo(session.createdAt)} · {session.history.length} steps
@@ -116,10 +121,10 @@ export function HistoryList({
 								<div className="flex items-center gap-0.5 ml-auto opacity-0 group-hover:opacity-100 transition-opacity">
 									<button
 										type="button"
-										onClick={(e) => handleRerun(e, session.task)}
+										onClick={(e) => handleRerun(e, session)}
 										className="p-0.5 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
 										title="Run task again"
-										aria-label={`Run history task again: ${session.task}`}
+										aria-label={`Run history task again: ${session.userRequest ?? session.task}`}
 									>
 										<RotateCcw className="size-3" />
 									</button>

@@ -1,6 +1,8 @@
-import { History, Send, Settings, Square } from 'lucide-react'
+import { ChevronDown, History, Send, Settings, Square } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
+import { useConversation } from '@/agent/useConversation'
+import { ChatMessageList } from '@/components/ChatMessageList'
 import { ConfigPanel } from '@/components/ConfigPanel'
 import { HistoryDetail } from '@/components/HistoryDetail'
 import { HistoryList } from '@/components/HistoryList'
@@ -15,8 +17,6 @@ import {
 } from '@/components/ui/input-group'
 import { saveSession } from '@/lib/db'
 
-import { useAgent } from '../../agent/useAgent'
-
 type View =
 	| { name: 'chat' }
 	| { name: 'config' }
@@ -29,7 +29,23 @@ export default function App() {
 	const historyRef = useRef<HTMLDivElement>(null)
 	const textareaRef = useRef<HTMLTextAreaElement>(null)
 
-	const { status, history, activity, currentTask, config, execute, stop, configure } = useAgent()
+	const {
+		status,
+		history,
+		activity,
+		currentTask,
+		config,
+		chatMessages,
+		plannerStatus,
+		plannerError,
+		currentRunDraft,
+		executedTasks,
+		sendMessage,
+		runTaskDirect,
+		stop,
+		configure,
+	} = useConversation()
+	const [selectedExecutedTaskId, setSelectedExecutedTaskId] = useState<string>('')
 
 	// Persist session when task finishes
 	const prevStatusRef = useRef(status)
@@ -41,34 +57,38 @@ export default function App() {
 			prev === 'running' &&
 			(status === 'completed' || status === 'error') &&
 			history.length > 0 &&
-			currentTask
+			currentTask &&
+			currentRunDraft
 		) {
-			saveSession({ task: currentTask, history, status }).catch((err) =>
-				console.error('[SidePanel] Failed to save session:', err)
-			)
+			saveSession({
+				task: currentTask,
+				userRequest: currentRunDraft.userRequest,
+				history,
+				status,
+			}).catch((err) => console.error('[SidePanel] Failed to save session:', err))
 		}
-	}, [status, history, currentTask])
+	}, [currentRunDraft, currentTask, history, status])
 
 	// Auto-scroll to bottom on new events
 	useEffect(() => {
 		if (historyRef.current) {
 			historyRef.current.scrollTop = historyRef.current.scrollHeight
 		}
-	}, [history, activity])
+	}, [activity, chatMessages, history, plannerStatus])
 
 	const runTask = useCallback(
 		(task: string) => {
 			const normalizedTask = task.trim()
-			if (!normalizedTask || status === 'running') return
+			if (!normalizedTask || status === 'running' || plannerStatus === 'planning') return
 
 			setInputValue('')
 			setView({ name: 'chat' })
 
-			execute(normalizedTask).catch((error) => {
-				console.error('[SidePanel] Failed to execute task:', error)
+			sendMessage(normalizedTask).catch((error) => {
+				console.error('[SidePanel] Failed to process message:', error)
 			})
 		},
-		[execute, status]
+		[plannerStatus, sendMessage, status]
 	)
 
 	const handleSubmit = useCallback(
@@ -111,7 +131,12 @@ export default function App() {
 			<HistoryList
 				onSelect={(id) => setView({ name: 'history-detail', sessionId: id })}
 				onBack={() => setView({ name: 'chat' })}
-				onRerun={runTask}
+				onRerun={(task, userRequest) => {
+					setView({ name: 'chat' })
+					runTaskDirect(task, userRequest).catch((error) => {
+						console.error('[SidePanel] Failed to rerun task:', error)
+					})
+				}}
 			/>
 		)
 	}
@@ -121,7 +146,12 @@ export default function App() {
 			<HistoryDetail
 				sessionId={view.sessionId}
 				onBack={() => setView({ name: 'history' })}
-				onRerun={runTask}
+				onRerun={(task, userRequest) => {
+					setView({ name: 'chat' })
+					runTaskDirect(task, userRequest).catch((error) => {
+						console.error('[SidePanel] Failed to rerun task:', error)
+					})
+				}}
 			/>
 		)
 	}
@@ -129,7 +159,13 @@ export default function App() {
 	// --- Chat view ---
 
 	const isRunning = status === 'running'
-	const showEmptyState = !currentTask && history.length === 0 && !isRunning
+	const isPlanning = plannerStatus === 'planning'
+	const selectedExecutedTask =
+		executedTasks.find((task) => task.id === selectedExecutedTaskId) ||
+		executedTasks[executedTasks.length - 1] ||
+		null
+	const showEmptyState =
+		chatMessages.length === 0 && history.length === 0 && !isRunning && !isPlanning
 
 	return (
 		<div className="relative flex flex-col h-screen bg-background">
@@ -163,19 +199,66 @@ export default function App() {
 
 			{/* Content */}
 			<main className="flex-1 overflow-hidden flex flex-col">
-				{/* Current task */}
-				{currentTask && (
-					<div className="border-b px-3 py-2 bg-muted/30">
-						<div className="text-[10px] text-muted-foreground uppercase tracking-wide">Task</div>
-						<div className="text-xs font-medium truncate" title={currentTask}>
-							{currentTask}
+				{executedTasks.length > 0 && (
+					<div className="border-b px-3 py-2 bg-muted/20 space-y-2">
+						<div className="flex items-center gap-2">
+							<div className="text-[10px] text-muted-foreground uppercase tracking-wide shrink-0">
+								Session Tasks
+							</div>
+							<div className="relative flex-1">
+								<select
+									value={selectedExecutedTaskId}
+									onChange={(e) => setSelectedExecutedTaskId(e.target.value)}
+									className="h-8 w-full appearance-none rounded-md border border-input bg-background px-2 pr-8 text-xs cursor-pointer"
+								>
+									{executedTasks.map((task, index) => (
+										<option key={task.id} value={task.id}>
+											{index + 1}. {task.userRequest}
+										</option>
+									))}
+								</select>
+								<ChevronDown className="pointer-events-none absolute right-2 top-1/2 size-3 -translate-y-1/2 text-muted-foreground" />
+							</div>
 						</div>
+
+						{selectedExecutedTask && (
+							<div className="rounded-md border bg-background px-2.5 py-2">
+								<div className="flex items-center justify-between gap-2">
+									<div className="text-[10px] text-muted-foreground uppercase tracking-wide">
+										Selected Task
+									</div>
+									<span className="text-[10px] text-muted-foreground capitalize">
+										{selectedExecutedTask.status}
+									</span>
+								</div>
+								<div
+									className="mt-1 text-xs font-medium truncate"
+									title={selectedExecutedTask.userRequest}
+								>
+									{selectedExecutedTask.userRequest}
+								</div>
+								<div
+									className="mt-1 text-[11px] text-muted-foreground whitespace-pre-wrap line-clamp-3"
+									title={selectedExecutedTask.task}
+								>
+									{selectedExecutedTask.task}
+								</div>
+							</div>
+						)}
 					</div>
 				)}
 
 				{/* History */}
 				<div ref={historyRef} className="flex-1 overflow-y-auto p-3 space-y-2">
 					{showEmptyState && <EmptyState />}
+
+					{(chatMessages.length > 0 || isPlanning || plannerError) && (
+						<ChatMessageList
+							messages={chatMessages}
+							plannerStatus={plannerStatus}
+							plannerError={plannerError}
+						/>
+					)}
 
 					{history.map((event, index) => (
 						<EventCard key={index} event={event} />
@@ -191,11 +274,11 @@ export default function App() {
 				<InputGroup className="relative rounded-lg">
 					<InputGroupTextarea
 						ref={textareaRef}
-						placeholder="Describe your task... (Enter to send)"
+						placeholder="Ask a question or describe a task... (Enter to send)"
 						value={inputValue}
 						onChange={(e) => setInputValue(e.target.value)}
 						onKeyDown={handleKeyDown}
-						disabled={isRunning}
+						disabled={isRunning || isPlanning}
 						className="text-xs pr-12 min-h-10"
 					/>
 					<InputGroupAddon align="inline-end" className="absolute bottom-0 right-0">
@@ -213,7 +296,7 @@ export default function App() {
 								size="icon-sm"
 								variant="default"
 								onClick={() => handleSubmit()}
-								disabled={!inputValue.trim()}
+								disabled={!inputValue.trim() || isPlanning}
 								className="size-7 cursor-pointer"
 							>
 								<Send className="size-3" />

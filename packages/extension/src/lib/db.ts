@@ -2,10 +2,11 @@ import type { HistoricalEvent } from '@page-agent/core'
 import { type DBSchema, type IDBPDatabase, openDB } from 'idb'
 
 const DB_NAME = 'page-agent-ext'
-const DB_VERSION = 1
+const DB_VERSION = 2
 
 export interface SessionRecord {
 	id: string
+	userRequest?: string
 	task: string
 	history: HistoricalEvent[]
 	status: 'completed' | 'error'
@@ -26,8 +27,10 @@ function getDB() {
 	if (!dbPromise) {
 		dbPromise = openDB<PageAgentDB>(DB_NAME, DB_VERSION, {
 			upgrade(db) {
-				const store = db.createObjectStore('sessions', { keyPath: 'id' })
-				store.createIndex('by-created', 'createdAt')
+				if (!db.objectStoreNames.contains('sessions')) {
+					const store = db.createObjectStore('sessions', { keyPath: 'id' })
+					store.createIndex('by-created', 'createdAt')
+				}
 			},
 		})
 	}
