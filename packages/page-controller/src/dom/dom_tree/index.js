@@ -891,6 +891,14 @@ export default (
 			'textbox', // Text input field
 			'listbox', // Selectable list
 			'option', // Selectable option in a list
+			'tree', // Hierarchical tree containers often delegate clicks to tree items
+			'treegrid', // Hybrid grid/tree widgets
+			'treeitem', // Expandable/selectable tree node
+			'grid', // Data grids expose row/cell interactions
+			'row', // Selectable/clickable grid row
+			'gridcell', // Clickable/editable grid cell
+			'rowheader', // Grid row header cells can drive selection
+			'columnheader', // Sort/filter headers in enterprise grids
 			'scrollbar', // Scrollable control
 		])
 
@@ -1238,7 +1246,11 @@ export default (
 		'listbox',
 		'listitem',
 		'treeitem',
+		'treegrid',
 		'row',
+		'gridcell',
+		'rowheader',
+		'columnheader',
 		'option',
 		'scrollbar',
 	])
@@ -1645,9 +1657,20 @@ export default (
 
 				// Special handling for ARIA menu containers - check interactivity even if not top element
 				const role = node.getAttribute('role')
-				const isMenuContainer = role === 'menu' || role === 'menubar' || role === 'listbox'
+				const isCompositeWidget =
+					role === 'menu' ||
+					role === 'menubar' ||
+					role === 'listbox' ||
+					role === 'tree' ||
+					role === 'treegrid' ||
+					role === 'grid' ||
+					role === 'row' ||
+					role === 'treeitem' ||
+					role === 'gridcell' ||
+					role === 'rowheader' ||
+					role === 'columnheader'
 
-				if (nodeData.isTopElement || isMenuContainer) {
+				if (nodeData.isTopElement || isCompositeWidget) {
 					nodeData.isInteractive = isInteractiveElement(node)
 					// Call the dedicated highlighting function
 					nodeWasHighlighted = handleHighlighting(nodeData, node, parentIframe, isParentHighlighted)
