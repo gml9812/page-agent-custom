@@ -117,6 +117,12 @@ export class RemotePageController {
 		return res
 	}
 
+	async doubleClickElement(...args: any[]): Promise<DomActionReturn> {
+		const res = await this.remoteCallDomAction('double_click_element', args)
+		await new Promise((resolve) => setTimeout(resolve, 1000))
+		return res
+	}
+
 	async inputText(...args: any[]): Promise<DomActionReturn> {
 		return this.remoteCallDomAction('input_text', args)
 	}

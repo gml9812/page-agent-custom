@@ -126,6 +126,66 @@ export async function clickElement(element: HTMLElement) {
 }
 
 /**
+ * Simulate a full double click following browser mouse event order:
+ * hover -> click -> click -> dblclick
+ *
+ * @private Internal method, subject to change at any time.
+ */
+export async function doubleClickElement(element: HTMLElement) {
+	blurLastClickedElement()
+
+	lastClickedElement = element
+
+	await scrollIntoViewIfNeeded(element)
+	const frame = element.ownerDocument.defaultView?.frameElement
+	if (frame) await scrollIntoViewIfNeeded(frame)
+
+	const rect = element.getBoundingClientRect()
+	const x = rect.left + rect.width / 2
+	const y = rect.top + rect.height / 2
+
+	await movePointerToElement(element, x, y)
+	await clickPointer()
+
+	await waitFor(0.1)
+
+	const doc = element.ownerDocument
+	await enablePassThrough()
+	const hitTarget = doc.elementFromPoint(x, y)
+	await disablePassThrough()
+	const target =
+		hitTarget instanceof HTMLElement && element.contains(hitTarget) ? hitTarget : element
+
+	const pointerOpts = {
+		bubbles: true,
+		cancelable: true,
+		clientX: x,
+		clientY: y,
+		pointerType: 'mouse',
+	}
+	const mouseOpts = { bubbles: true, cancelable: true, clientX: x, clientY: y, button: 0 }
+
+	target.dispatchEvent(new PointerEvent('pointerover', pointerOpts))
+	target.dispatchEvent(new PointerEvent('pointerenter', { ...pointerOpts, bubbles: false }))
+	target.dispatchEvent(new MouseEvent('mouseover', mouseOpts))
+	target.dispatchEvent(new MouseEvent('mouseenter', { ...mouseOpts, bubbles: false }))
+
+	for (let clickCount = 1; clickCount <= 2; clickCount++) {
+		target.dispatchEvent(new PointerEvent('pointerdown', pointerOpts))
+		target.dispatchEvent(new MouseEvent('mousedown', { ...mouseOpts, detail: clickCount }))
+		element.focus({ preventScroll: true })
+		target.dispatchEvent(new PointerEvent('pointerup', pointerOpts))
+		target.dispatchEvent(new MouseEvent('mouseup', { ...mouseOpts, detail: clickCount }))
+		target.click()
+		await waitFor(0.05)
+	}
+
+	target.dispatchEvent(new MouseEvent('dblclick', { ...mouseOpts, detail: 2 }))
+
+	await waitFor(0.2)
+}
+
+/**
  * @private Internal method, subject to change at any time.
  */
 export async function inputTextElement(element: HTMLElement, text: string) {

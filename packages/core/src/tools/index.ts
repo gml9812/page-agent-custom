@@ -95,6 +95,21 @@ tools.set(
 )
 
 tools.set(
+	'double_click_element_by_index',
+	tool({
+		description:
+			'Double click element by index. Use when the UI expects a double click to open, edit, or drill into an item.',
+		inputSchema: z.object({
+			index: z.int().min(0),
+		}),
+		execute: async function (this: PageAgentCore, input) {
+			const result = await this.pageController.doubleClickElement(input.index)
+			return result.message
+		},
+	})
+)
+
+tools.set(
 	'input_text',
 	tool({
 		description: 'Click and type text into an interactive input element',

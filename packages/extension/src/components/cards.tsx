@@ -6,7 +6,6 @@ import type {
 	ObservationEvent,
 	RetryEvent,
 } from '@page-agent/core'
-import type { ConversationLanguage } from '@/agent/conversationTypes'
 import {
 	Brain,
 	CheckCircle,
@@ -24,6 +23,7 @@ import {
 } from 'lucide-react'
 import { Fragment, useState } from 'react'
 
+import type { ConversationLanguage } from '@/agent/conversationTypes'
 import { cn } from '@/lib/utils'
 
 function getCardCopy(_language: ConversationLanguage) {
@@ -151,6 +151,7 @@ function ReflectionSection({
 function ActionIcon({ name, className }: { name: string; className?: string }) {
 	const icons: Record<string, React.ReactNode> = {
 		click_element_by_index: <Mouse className={className} />,
+		double_click_element_by_index: <Mouse className={className} />,
 		input: <Keyboard className={className} />,
 		scroll: <MoveVertical className={className} />,
 		go_to_url: <Globe className={className} />,
@@ -323,7 +324,11 @@ function StepCard({
 				</div>
 			)}
 
-			<RawSection rawRequest={event.rawRequest} rawResponse={event.rawResponse} language={language} />
+			<RawSection
+				rawRequest={event.rawRequest}
+				rawResponse={event.rawResponse}
+				language={language}
+			/>
 		</div>
 	)
 }
